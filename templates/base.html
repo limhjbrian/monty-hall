@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <meta charset="UTF-8">
+    <title>몬티홀 문제</title>
+    <style>
+        h1 {
+            font-size: 2.5rem; /* 원하는 크기로 조절 가능 (예: 2rem, 3rem 등) */
+        }
+        h2 {
+            font-size: 2rem;
+        }
+        h3 {
+            font-size: 2.5rem;
+        }
+        h4 { /* 본문 크기 */
+            font-size: 1.2rem;
+        }
+        .door-container {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 50px 0;
+        }
+        .door {
+            width: 200px;
+            height: 300px;
+            border: 5px solid #333;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            color: #FFD700;
+            transition: all 0.3s;
+            position: relative;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        .door:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+        }
+        .door.selected {
+            border-color: #FFD700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+        }
+        .door.revealed {
+            background: linear-gradient(135deg, #90EE90 0%, #98FB98 100%);
+            cursor: not-allowed;
+        }
+        .door.revealed::after {
+            content: '🐐';
+            font-size: 80px;
+        }
+        .door.win {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+        }
+        .door.win::after {
+            content: '🚗';
+            font-size: 80px;
+        }
+        .door.lose {
+            background: linear-gradient(135deg, #90EE90 0%, #98FB98 100%);
+        }
+        .door.lose::after {
+            content: '🐐';
+            font-size: 80px;
+        }
+        .door-number {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 24px;
+            color: white;
+            font-weight: bold;
+        }
+        .instruction-box {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 20px;
+            margin: 30px auto;
+            max-width: 800px;
+            border-radius: 5px;
+        }
+        .result-box {
+            margin: 30px auto;
+            max-width: 600px;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .result-box.win {
+            background: #d4edda;
+            border: 2px solid #28a745;
+        }
+        .result-box.lose {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+        }
+        .decision-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .btn-decision {
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .stats-box {
+            background: #e9ecef;
+            border: 2px solid #6c757d;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px auto;
+            max-width: 600px;
+        }
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+        .stat-label {
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .stat-value {
+            font-size: 20px;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">🚪 몬티홀 문제 🚪</h1>
+        <h4>여기 세 개의 문이 있습니다.</h4>
+        <h4>한 문 뒤에는 아주 비싼 자동차가 있고, 나머지 두 문 뒤에는 아무짝에 쓸모 없는 염소가 있습니다.</h4>
+        <h4>호스트가 당신이 선택하지 않은 문 중 하나를 열어 염소를 보여줍니다.</h4>
+        <h4>이제 선택을 바꾸시겠습니까? 아니면 그대로 유지하시겠습니까?</h4>
+        <h4>여러번(10번 이상) 체험을 해보고 넘어가시는 것을 추천합니다.</h4>
+        <div style="height: 5rem;"></div>
+
+        {% if session.get('game_state') == 'initial' or not session.get('game_state') %}
+        <div class="text-center mb-4">
+            <h3>문을 선택하세요!</h3>
+        </div>
+        {% elif session.get('game_state') == 'revealed' %}
+        <div class="text-center mb-4">
+            <h3>호스트가 {{ session.get('revealed_door') }}번 문을 열었습니다. 염소가 있네요!</h3>
+            <p>선택을 바꾸시겠습니까?</p>
+        </div>
+        {% elif session.get('game_state') == 'finished' %}
+        <div class="result-box {{ session.get('result') }}">
+            {% if session.get('result') == 'win' %}
+            <h2>🎉 축하합니다! 당신이 이겼습니다! 🎉</h2>
+            <p class="lead">자동차를 획득했습니다!</p>
+            {% else %}
+            <h2>😢 아쉽네요... 염소를 선택하셨습니다.</h2>
+            <p class="lead">다음 기회에 다시 도전해보세요!</p>
+            {% endif %}
+            <p class="mt-3">차는 {{ session.get('car_door') }}번 문 뒤에 있었습니다.</p>
+            <a href="/reset" class="btn btn-primary btn-lg mt-3">다시 플레이</a>
+        </div>
+        {% endif %}
+
+        <div class="door-container">
+            {% for door_num in [1, 2, 3] %}
+            <div class="door 
+                {% if session.get('game_state') == 'revealed' and door_num == session.get('revealed_door') %}revealed
+                {% elif session.get('game_state') == 'finished' and door_num == session.get('car_door') %}win
+                {% elif session.get('game_state') == 'finished' and door_num != session.get('car_door') and door_num != session.get('revealed_door') %}lose
+                {% elif session.get('player_choice') == door_num %}selected
+                {% endif %}"
+                {% if session.get('game_state') == 'initial' or not session.get('game_state') %}
+                onclick="window.location.href='/select_door/{{ door_num }}'"
+                {% endif %}>
+                <div class="door-number">{{ door_num }}</div>
+                {% if (session.get('game_state') == 'initial' or not session.get('game_state')) or (session.get('game_state') == 'revealed' and door_num != session.get('revealed_door') and door_num != session.get('player_choice')) %}
+                🚪
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if session.get('game_state') == 'revealed' %}
+        <div class="decision-buttons">
+            <a href="/final_decision/stay" class="btn btn-warning btn-decision">유지하기</a>
+            <a href="/final_decision/switch" class="btn btn-success btn-decision">바꾸기</a>
+        </div>
+        {% endif %}
+
+        {% if session.get('game_state') == 'initial' or not session.get('game_state') %}
+        <div class="text-center mt-4">
+            <p class="text-muted">위의 문 중 하나를 클릭하여 선택하세요</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="container mt-5">
+        <h4>호스트가 문을 열어주면 많은 생각이 들겁니다.</h4>
+        <h4>바꾸는 것이 나을까, 아니면 그대로 유지하는 것이 나을까?</h4>
+        <h4>바꾸었는데 원래 고른 곳에 있으면 억울하고 그렇다고 가만히 있을 이유도 없습니다.</h4>
+        <h4>하지만 확률적으로 따지면 바꾸는 것이 더욱 유리합니다.</h4>
+        <h4>왜 그럴까요?</h4>
+        <div style="height: 1.5rem;"></div>
+        <h4>일단 당신이 플레이한 기록으로 한번 볼까요?</h4>
+        <div style="height: 7rem;"></div>
+    </div>
+
+    <div class="stats-box">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0">통계</h4>
+            <a href="/reset_stats" class="btn btn-sm btn-outline-secondary">통계 초기화</a>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">바꿨을 때 승리:</span>
+            <span class="stat-value">
+            {% set switch_win = session.get('switch_win', 0) %}
+            {% set switch_total = session.get('switch_total', 0) %}
+            {{ switch_win }} / {{ switch_total }}
+            {% if switch_total > 0 %}
+            ({{ ((switch_win / switch_total) * 100)|round(1) }}%)
+            {% else %}
+            (0%)
+            {% endif %}
+            </span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">유지했을 때 승리:</span>
+            <span class="stat-value">
+            {% set stay_win = session.get('stay_win', 0) %}
+            {% set stay_total = session.get('stay_total', 0) %}
+            {{ stay_win }} / {{ stay_total }}
+            {% if stay_total > 0 %}
+            ({{ ((stay_win / stay_total) * 100)|round(1) }}%)
+            {% else %}
+            (0%)
+            {% endif %}
+            </span>
+        </div>
+    </div>
+    
+    <div class="text-center mb-4">
+        <h4>통계에서 선택을 바꿨을 때 더 많이 맞춘것을 확인할 수 있었을 겁니다.</h4>
+        <h4>왜 저는 이렇게 확신할 수 있었을까요? 신기하게도 두 문의 확률이 1/3으로 동일하지 않습니다.</h4>
+    </div>
+
+</body>
+</html>
